@@ -1,0 +1,10 @@
+EasyModel
+By Darren Struthers <dstruthers@gmail.com>
+
+OVERVIEW
+A lightweight database modeling library for PHP. Inspired by the Django model
+framework.
+
+LICENSING
+This is free software licensed under the terms of the X11 license. See LICENSE
+for more information.

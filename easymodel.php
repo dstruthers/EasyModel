@@ -99,6 +99,36 @@ abstract class EasyModelTable {
     return $o;
   }
 
+  public static function loadMany ($query) {
+    self::connectDB();
+    $loadQuery = "SELECT * FROM " . self::$tableName;;
+    $args = array();
+    $conditions = array();
+    foreach ($query as $key => $value) {
+      $conditions[] = "$key = ?";
+      $args[] = $value;
+    }
+    if (count($conditions)) {
+      $loadQuery .= ' WHERE ' . implode(' AND ', $conditions);
+    }
+    $sth = self::$db->prepare($loadQuery);
+    $sth->execute($args);
+    $queryResults = $sth->fetchAll(PDO::FETCH_ASSOC);
+    $results = array();
+    foreach ($queryResults as $result) {
+      $o = new static();
+      foreach ($result as $key => $value) {
+        $o->values[$key] = $value;
+      }
+      $results[] = $o;
+    }
+    return $results;
+  }
+
+  public static function loadAll () {
+    return self::loadMany();
+  }
+
   private static function connectDB () {
     self::$db = EasyModel::getDB();
   }

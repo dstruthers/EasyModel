@@ -106,7 +106,7 @@ abstract class EasyModelTable {
 
   public static function load ($query) {
     self::connectDB();
-    $loadQuery = "SELECT * FROM " . self::$tableName;
+    $loadQuery = 'SELECT * FROM ' . self::$tableName;
     $args = array();
     $conditions = array();
     foreach ($query as $key => $value) {
@@ -128,7 +128,7 @@ abstract class EasyModelTable {
 
   public static function loadMany ($query) {
     self::connectDB();
-    $loadQuery = "SELECT * FROM " . self::$tableName;
+    $loadQuery = 'SELECT * FROM ' . self::$tableName;
     $args = array();
     $conditions = array();
     foreach ($query as $key => $value) {
@@ -154,6 +154,15 @@ abstract class EasyModelTable {
 
   public static function loadAll () {
     return self::loadMany(array());
+  }
+
+  public static function count () {
+    self::connectDB();
+    $query = 'SELECT COUNT(*) AS count FROM ' . self::$tableName;
+    $sth = self::$db->query($query);
+    $sth->execute();
+    $result = $sth->fetch(PDO::FETCH_ASSOC);
+    return (int)$result['count'];
   }
 
   public function save () {
@@ -211,8 +220,8 @@ abstract class EasyModelTable {
 
   public function delete () {
     if ($this->key()) {
-      $sth = self::$db->prepare("DELETE FROM " . self::$tableName . " WHERE "
-                                . self::$primaryKeyField . " = ?");
+      $sth = self::$db->prepare('DELETE FROM ' . self::$tableName . ' WHERE '
+                                . self::$primaryKeyField . ' = ?');
       $sth->execute(array($this->key()));
     }
     else {

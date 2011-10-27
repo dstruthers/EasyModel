@@ -16,11 +16,26 @@ abstract class DBField {
     $this->null = $nullable;
     $this->default = $defaultValue;
   }
+
+  public function fromSQL ($value) {
+    return $value;
+  }
+  public function toSQL ($value) {
+    return $value;
+  }
   protected $length;
   protected $null;
   protected $default;
 }
 class PrimaryKeyField extends DBField {
+}
+class BooleanField extends DBField {
+  public function fromSQL ($value) {
+    return $value !== 0;
+  }
+  public function toSQL ($value) {
+    return $value ? 1 : 0;
+  }
 }
 class TextField extends DBField {
 }
@@ -29,6 +44,16 @@ class VarcharField extends DBField {
 class IntField extends DBField {
 }
 class TimestampField extends DBField {
+  public function fromSQL ($value) {
+    return $value != NULL ? strtotime($value) : NULL;
+  }
+  public function toSQL ($value) {
+    return $value ? date('Y-m-d H:i:s', $value) : NULL;
+  }
+}
+class CreateTimestampField extends TimestampField {
+}
+class UpdateTimestampField extends TimestampField {
 }
 class ForeignKeyField extends DBField {
   public function __construct ($table, $name) {
@@ -81,27 +106,29 @@ abstract class EasyModelTable {
 
   public static function load ($query) {
     self::connectDB();
-    $loadQuery = "SELECT * FROM " . self::$tableName . " WHERE ";
+    $loadQuery = "SELECT * FROM " . self::$tableName;
     $args = array();
     $conditions = array();
     foreach ($query as $key => $value) {
       $conditions[] = "$key = ?";
       $args[] = $value;
     }
-    $loadQuery .= implode(' AND ', $conditions);
+    if (count($conditions)) {
+      $loadQuery .= ' WHERE ' . implode(' AND ', $conditions);
+    }
     $sth = self::$db->prepare($loadQuery);
     $sth->execute($args);
     $result = $sth->fetch(PDO::FETCH_ASSOC);
     $o = new static();
     foreach ($result as $key => $value) {
-      $o->values[$key] = $value;
+      $o->values[$key] = self::$fields[$key]->fromSQL($value);
     }
     return $o;
   }
 
   public static function loadMany ($query) {
     self::connectDB();
-    $loadQuery = "SELECT * FROM " . self::$tableName;;
+    $loadQuery = "SELECT * FROM " . self::$tableName;
     $args = array();
     $conditions = array();
     foreach ($query as $key => $value) {
@@ -118,19 +145,83 @@ abstract class EasyModelTable {
     foreach ($queryResults as $result) {
       $o = new static();
       foreach ($result as $key => $value) {
-        $o->values[$key] = $value;
+        $o->values[$key] = self::$fields[$key]->fromSQL($value);
       }
       $results[] = $o;
     }
     return $results;
   }
 
+  public function key () {
+    if (self::$primaryKeyField) {
+      if (isset($this->values[self::$primaryKeyField])) {
+        return $this->values[self::$primaryKeyField];
+      }
+    }
+    return NULL;
+  }
+
+  public function save () {
+    self::connectDB();
+    if ($this->key()) {
+      $query = 'UPDATE ' . self::$tableName . ' SET ';
+      $updates = array();
+      $args = array();
+      foreach (self::$fields as $key => $field) {
+        if (!($field instanceof PrimaryKeyField)) {
+          $updates[] = "$key = ?";
+          if ($field instanceof UpdateTimestampField) {
+            $this->values[$key] = time();
+            $args[] = $field->toSQL($this->values[$key]);
+          }
+          else {
+            $args[] = $field->toSQL($this->values[$key]);
+          }
+        }
+      }
+      $query .= implode(', ', $updates);
+      $query .= ' WHERE ' . self::$primaryKeyField . ' = ?';
+      $args[] = $this->key();
+
+      $sth = self::$db->prepare($query);
+      $sth->execute($args);
+    }
+    else {
+      $query = 'INSERT INTO ' . self::$tableName . ' ';
+      $insertFields = array();
+      foreach (self::$fields as $key => $field) {
+        if (!($field instanceof PrimaryKeyField)) {
+          $insertFields[] = $key;
+        }
+      }
+      $query .= '(' . implode(', ', $insertFields) . ') VALUES ('
+        . implode(', ', array_fill(0, count($insertFields), '?')) . ')';
+
+      foreach (self::$fields as $key => $value) {
+        if ($value instanceof CreateTimestampField) {
+          $this->values[$key] = time();
+        }
+      }
+      $args = array();
+      foreach ($insertFields as $field) {
+        $args[] = self::$fields[$field]->toSQL($this->values[$field]);
+      }
+      $sth = self::$db->prepare($query);
+      $sth->execute($args);
+      if (self::$primaryKeyField) {
+        $this->values[self::$primaryKeyField] = self::$db->lastInsertId();
+      }
+    }
+  }
+
   public static function loadAll () {
-    return self::loadMany();
+    return self::loadMany(array());
   }
 
   private static function connectDB () {
-    self::$db = EasyModel::getDB();
+    if (!self::$db) {
+      self::$db = EasyModel::getDB();
+    }
   }
 
   private static $tableName;

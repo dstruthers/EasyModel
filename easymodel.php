@@ -152,13 +152,8 @@ abstract class EasyModelTable {
     return $results;
   }
 
-  public function key () {
-    if (self::$primaryKeyField) {
-      if (isset($this->values[self::$primaryKeyField])) {
-        return $this->values[self::$primaryKeyField];
-      }
-    }
-    return NULL;
+  public static function loadAll () {
+    return self::loadMany(array());
   }
 
   public function save () {
@@ -214,8 +209,24 @@ abstract class EasyModelTable {
     }
   }
 
-  public static function loadAll () {
-    return self::loadMany(array());
+  public function delete () {
+    if ($this->key()) {
+      $sth = self::$db->prepare("DELETE FROM " . self::$tableName . " WHERE "
+                                . self::$primaryKeyField . " = ?");
+      $sth->execute(array($this->key()));
+    }
+    else {
+      throw new EasyModelException("Cannot delete object with no primary key");
+    }
+  }
+
+  public function key () {
+    if (self::$primaryKeyField) {
+      if (isset($this->values[self::$primaryKeyField])) {
+        return $this->values[self::$primaryKeyField];
+      }
+    }
+    return NULL;
   }
 
   private static function connectDB () {

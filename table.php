@@ -39,6 +39,14 @@ abstract class EasyModelTable {
     }
   }
 
+  public static function create ($values) {
+    $o = new static();
+    foreach ($values as $key => $value) {
+      $o->$key = $value;
+    }
+    return $o;
+  }
+
   public static function load ($query) {
     self::connectDB();
     $loadQuery = 'SELECT * FROM ' . self::$tableName;

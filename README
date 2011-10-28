@@ -29,10 +29,9 @@ $echo $p->fullName();
 $people = People::loadMany(array('last' => 'Smith'));
 
 // 3. Creating a new object
-$p = new People();
-$p->first = 'John';
-$p->last = 'Smith';
-$p->email = 'jsmith@example.com';
+$p = People::create(array('first' => 'John',
+                          'last' => 'Smith',
+                          'email' => 'jsmith@example.com'));
 $p->save();
 
 // 4. Deleting an object

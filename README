@@ -1,9 +1,42 @@
 EasyModel
-By Darren Struthers <dstruthers@gmail.com>
+By Darren M. Struthers <dstruthers@gmail.com>
 
 OVERVIEW
 A lightweight database modeling library for PHP. Inspired by the Django model
-framework.
+framework. Requires PHP 5.3+
+
+Basic usage:
+
+class People extends EasyModelTable {
+  public function fullName () {
+    return $this->first . ' ' . $this->last;
+  }
+}
+People::describe('people',
+                 array('id' => new PrimaryKeyField(),
+		       'first' => new VarcharField(32),
+                       'last' => new VarcharField(32),
+                       'email' => new VarcharField(64),
+                       'created' => new CreateTimestampField(),
+                       'updated' => new UpdateTimestampField()
+                      ));
+
+// 1. Loading a single object
+$p = People::load(array('id' => 1));
+$echo $p->fullName();
+
+// 2. Loading many objects
+$people = People::loadMany(array('last' => 'Smith'));
+
+// 3. Creating a new object
+$p = new People();
+$p->first = 'John';
+$p->last = 'Smith';
+$p->email = 'jsmith@example.com';
+$p->save();
+
+// 4. Deleting an object
+$p->delete();
 
 LICENSING
 This is free software licensed under the terms of the X11 license. See LICENSE
